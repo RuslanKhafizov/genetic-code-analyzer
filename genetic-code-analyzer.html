@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Rumer Orbit Explorer</title>
+    <style>
+        :root {
+            --cell-base-size: 6vmin; 
+            --matrix-wrapper-padding: calc(var(--cell-base-size) * 0.1);
+            --label-font-size: calc(var(--cell-base-size) * 0.48);
+            --matrix-title-font-size: calc(var(--cell-base-size) * 0.42);
+            --transform-panel-width: 300px; 
+            --selector-panel-width: 190px; /* Оставляем ширину, кнопка About займет место */
+        }
+
+        html, body { height: 100%; margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #212529; background-color: #e9ecef; }
+        .app-container { display: flex; flex-direction: row; height: 100vh; width: 100vw; }
+        
+        .orbit-selector-panel { 
+            flex-shrink: 0; 
+            width: var(--selector-panel-width); 
+            padding: 15px 10px; 
+            background-color: #f8f9fa; 
+            border-right: 1px solid #dee2e6; 
+            overflow-y: auto; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            gap: 8px; 
+            z-index: 10; 
+        }
+        .orbit-selector-panel h2 { margin-top: 0; margin-bottom: 10px; font-size: 1.1em; color: #343a40; text-align: center; font-weight: 600; }
+        .orbit-selector-panel button:not(#aboutBtn) { /* Исключаем кнопку About из этих стилей, если ей нужны свои */
+            width: 95%; 
+            padding: 8px 6px; 
+            font-size: 0.75em; 
+            cursor: pointer; 
+            background-color: #fff; 
+            color: #495057; 
+            border: 1px solid #ced4da; 
+            border-radius: 0.25rem; 
+            transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out; 
+            white-space: nowrap; 
+            overflow: hidden; 
+            text-overflow: ellipsis; 
+        }
+        .orbit-selector-panel button:not(#aboutBtn):hover { background-color: #e9ecef; border-color: #adb5bd; }
+        .orbit-selector-panel button:not(#aboutBtn).active { background-color: #007bff; color: white; border-color: #007bff; font-weight: 500; box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25); }
+        
+        #aboutBtn { /* Стили для кнопки "About" */
+            width: 95%;
+            padding: 8px 6px;
+            font-size: 0.75em;
+            cursor: pointer;
+            background-color: #6c757d; 
+            color: white;
+            border: 1px solid #5a6268;
+            border-radius: 0.25rem;
+            margin-top: auto; /* Прижимает кнопку к низу панели, если есть место */
+            margin-bottom: 5px; /* Небольшой отступ снизу */
+            transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
+        }
+        #aboutBtn:hover {
+            background-color: #5a6268;
+            border-color: #545b62;
+        }
+
+        .main-visualization-area { flex-grow: 1; display: flex; justify-content: center; align-items: center; padding: 15px; overflow: hidden; }
+        
+        .orbit-display-area { display: grid; grid-template-columns: auto auto; grid-template-rows: auto auto; gap: calc(var(--cell-base-size) * 0.6); align-items: center; justify-items: center; }
+        .matrix-pos-0 { grid-area: 1 / 1; } .matrix-pos-1 { grid-area: 1 / 2; } .matrix-pos-2 { grid-area: 2 / 1; } .matrix-pos-3 { grid-area: 2 / 2; } 
+        
+        .transformation-info-panel { flex-shrink: 0; width: var(--transform-panel-width); padding: 25px 20px; background-color: #f8f9fa; border-left: 1px solid #dee2e6; overflow-y: auto; font-size: 0.95em; line-height: 1.65; z-index: 10; display: flex; flex-direction: column; }
+        .transformation-info-panel h3 { margin-top: 0; margin-bottom: 15px; color: #343a40; font-size: 1.25em; font-weight: 600; border-bottom: 1px solid #e0e0e0; padding-bottom: 8px; }
+        .transformation-info-panel p { margin-bottom: 1em; }
+        .transformation-info-panel .formula { font-family: Consolas, 'Courier New', Courier, monospace; padding: 10px 12px; background-color: #fff; border: 1px solid #e0e0e0; border-radius: 0.25rem; margin-bottom: 12px; display: block; cursor: pointer; transition: background-color 0.15s ease-out, box-shadow 0.15s ease-out, border-color 0.15s ease-out; }
+        .transformation-info-panel .formula:hover { background-color: #e9ecef; border-color: #c0c6cc;}
+        .transformation-info-panel .formula.active-formula { background-color: #007bff; color: white; border-color: #0056b3; box-shadow: 0 2px 10px rgba(0, 100, 200, 0.5); font-weight: bold; }
+        .transformation-info-panel .formula.active-formula .transform-part { color: white; font-weight: bold;}
+        .transformation-info-panel .transform-part { padding: 1px 2px; border-radius: 2px; font-weight: 500; display: inline-block; transition: background-color 0.1s, color 0.1s; }
+        .transformation-info-panel .formula:not(.active-formula) .transform-part:hover { background-color: #ffc107; color: #212529;}
+        
+        #resetTransformsBtn {
+            padding: 8px 15px;
+            font-size: 0.9em;
+            cursor: pointer;
+            background-color: #6c757d;
+            color: white;
+            border: 1px solid #5a6268;
+            border-radius: 0.25rem;
+            margin-top: 15px;
+            transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
+        }
+        #resetTransformsBtn:hover {
+            background-color: #5a6268;
+            border-color: #545b62;
+        }
+        .panel-section { margin-bottom: 20px; }
+
+        .mini-matrix-overall-container { display: flex; flex-direction: column; align-items: center; }
+        .matrix-title { font-family: 'Courier New', Courier, monospace; font-size: var(--matrix-title-font-size); font-weight: bold; text-align: center; margin-bottom: calc(var(--cell-base-size) * 0.1); color: #1a1a1a; min-height: 1.2em; }
+        .matrix-title span.highlighted-nucleotide-title { background-color: #ffdd57; color: black; padding: 0 2px; border-radius: 3px; }
+        .mini-matrix-wrapper { display: flex; flex-direction: column; border: 1px solid #777; background-color: #fff; padding: var(--matrix-wrapper-padding); border-radius: 3px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .mini-matrix-labels-row, .mini-matrix-main-content-row { display: flex; }
+        .mini-matrix-labels-col { display: flex; flex-direction: column; }
+        .mini-matrix-label-cell, .mini-matrix-corner-cell { width: var(--cell-base-size); height: var(--cell-base-size); display: flex; justify-content: center; align-items: center; font-size: var(--label-font-size); font-weight: bold; color: #333; box-sizing: border-box; transition: background-color 0.1s, color 0.1s; }
+        .mini-matrix-corner-cell { background-color: #f0f0f0; }
+        .mini-matrix-label-cell.highlighted-nucleotide-axis { background-color: #ffdd57; color: black; font-weight: bold; }
+        .mini-matrix { display: grid; grid-template-columns: repeat(4, var(--cell-base-size)); grid-template-rows: repeat(4, var(--cell-base-size)); }
+        .mini-matrix-cell { border: 1px solid #eee; box-sizing: border-box; }
+        .octet-I { background-color: black; }
+        .octet-II { background-color: white; } 
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 25px 30px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 750px;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            transform: scale(0.95);
+            transition: transform 0.3s ease;
+        }
+        .modal-overlay.active .modal-content {
+            transform: scale(1);
+        }
+        .modal-content h2 { font-size: 1.5em; font-weight: 600; margin-bottom: 15px; color: #333; }
+        .modal-content h3 { font-size: 1.2em; font-weight: 600; margin-top: 15px; margin-bottom: 8px; color: #444; }
+        .modal-content h4 { font-size: 1.05em; font-weight: 600; margin-top: 10px; margin-bottom: 5px; color: #555; }
+        .modal-content p, .modal-content li { font-size: 0.9em; line-height: 1.6; margin-bottom: 10px; color: #333; }
+        .modal-content ul { list-style-position: outside; padding-left: 20px; }
+        .modal-content a { color: #007bff; text-decoration: none; }
+        .modal-content a:hover { text-decoration: underline; }
+        .modal-content button.close-modal-btn {
+            display: block;
+            margin: 20px auto 0;
+            padding: 10px 20px;
+            font-size: 0.9em;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 0.25rem;
+            cursor: pointer;
+        }
+        .modal-content button.close-modal-btn:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="orbit-selector-panel" id="orbitSelectorPanel">
+            <h2>Orbits:</h2>
+            <!-- Кнопки орбит будут добавлены здесь JavaScript-ом -->
+            <button id="aboutBtn">Information</button>
+            <!-- Кнопка переключения языка удалена -->
+        </div>
+        <div class="main-visualization-area">
+            <div id="orbitDisplayArea" class="orbit-display-area">
+                <!-- Мини-матрицы будут добавлены здесь JavaScript-ом -->
+            </div>
+        </div>
+        <div class="transformation-info-panel" id="transformationInfoPanel">
+            <div class="panel-section">
+                <h3>Rumer Transformations</h3>
+                <p>Click on a formula to apply the transformation and highlight nucleotides. Click again to undo.</p>
+                <div class="formula" data-apply-transform="R" data-highlight-nucleotides="T,G,C,A"> R: (<span class="transform-part" data-nucleotides="T,G">T&harr;G</span>, <span class="transform-part" data-nucleotides="C,A">C&harr;A</span>)</div>
+                <div class="formula" data-apply-transform="R1" data-highlight-nucleotides="T,G"> R<sub>1</sub>: (<span class="transform-part" data-nucleotides="T,G">T&harr;G</span>)</div>
+                <div class="formula" data-apply-transform="R2" data-highlight-nucleotides="C,A"> R<sub>2</sub>: (<span class="transform-part" data-nucleotides="C,A">C&harr;A</span>)</div>
+                <button id="resetTransformsBtn">Reset Transformations</button>
+            </div>
+            <div class="panel-section">
+                <h3>Group Properties</h3>
+                <p>R = R<sub>1</sub>&middot;R<sub>2</sub></p> <p>R<sub>1</sub> = R&middot;R<sub>2</sub></p> <p>R<sub>2</sub> = R&middot;R<sub>1</sub></p> <p>X&middot;X = E (involutions)</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="aboutModalOverlay" class="modal-overlay">
+        <div class="modal-content">
+            <!-- English Version -->
+            <h2>About the Interactive Rumer Orbit Explorer</h2>
+            <p>This interactive web tool is designed for visualizing, exploring, and analyzing the structural and mathematical symmetries inherent in the genetic code. Special attention is given to the concepts first proposed by <strong>Yuri Borisovich Rumer</strong> and their further development.</p>
+            <h3>Scientific Basis and Key Concepts:</h3>
+            <h4>1. Rumer's Octets:</h4>
+            <p><strong>Y.B. Rumer</strong> was the first to note that the 16 "columns" (XY-boxes, defined by the first two nucleotides of a codon) in the standard genetic code table can be divided into two groups of eight columns each – the <strong>Octets</strong>.</p>
+            <ul>
+                <li><strong>Octet I:</strong> Includes XY-boxes where all four codons (XYN, where N is any of the four nucleotides) code for the same amino acid (complete 4-fold degeneracy).</li>
+                <li><strong>Octet II:</strong> Includes the remaining XY-boxes where such complete degeneracy is not observed.</li>
+            </ul>
+            <p>In this tool, assignment to Octet I or II is determined dynamically for the standard genetic code based on this principle of 4-fold degeneracy.</p>
+            
+            <h4>2. Rumer's R-Transformation:</h4>
+            <p><strong>Y.B. Rumer</strong> also discovered that Octets I and II are related by a simple symmetry transformation <strong>R = (T↔G, C↔A)</strong> (in RNA nucleotides: U↔G, C↔A). This transformation mutually converts XY-boxes from Octet I to Octet II and vice versa.</p>
+
+            <h4>3. Codograms and Code Representations:</h4>
+            <p>The concept of a <strong>codogram</strong> was introduced by <strong>Vladimir I. Shcherbak</strong> and <strong>Maxim A. Makukov</strong> (see <a href="https://arxiv.org/pdf/1707.03382" target="_blank" rel="noopener noreferrer">Shcherbak & Makukov, 2013 / arXiv:1707.03382</a>) to visualize the structure of the genetic code. A codogram is a 4x4 square whose cells are colored based on whether the corresponding XY-box belongs to Octet I or Octet II.</p>
+            <p>There are 24 possible ways to order the nucleotides (T, C, A, G or U, C, A, G) on the axes of a codogram if the order on both axes is synchronous ("homogeneous representations").</p>
+
+            <h4>4. Simply-Connected Codograms and the {E, R, R1, R2} Transformation Group:</h4>
+            <p><strong>Alexander D. Panov</strong> (see <a href="http://dec1.sinp.msu.ru/~panov" target="_blank" rel="noopener noreferrer">personal page</a>, <a href="https://www.socionauki.ru/news/3562368" target="_blank" rel="noopener noreferrer">publication</a>) and <strong>Felix P. Filatov</strong> analyzed all 24 codograms and found that among them, four "simply-connected" codograms stand out (two unique and their two mirror/rotated versions). In such codograms, the regions corresponding to Octets I and II are continuous, without breaks.</p>
+            <p>They also showed that these four simply-connected codograms form a closed group under the transformations:</p>
+            <ul>
+                <li><strong>R</strong> (full Rumer): U↔G, C↔A</li>
+                <li><strong>R1</strong> ("purine" Rumer transformation): U↔G (A and C unchanged)</li>
+                <li><strong>R2</strong> ("pyrimidine" Rumer transformation): C↔A (U and G unchanged)</li>
+                <li><strong>E</strong> (identity transformation)</li>
+            </ul>
+            <p>These four transformations {E, R, R1, R2} form a mathematical group (the Klein four-group V₄).</p>
+
+            <h4>5. Codogram Orbits:</h4>
+            <p>I (<strong>Ruslan Khafizov</strong>, contact: <a href="mailto:jhgf10@gmail.com">jhgf10@gmail.com</a>), the developer of this tool, established that all 24 codograms are divided into 6 disjoint "orbits" under the action of the {E, R, R1, R2} transformation group. Each such orbit contains 4 codograms:</p>
+            <ul style="font-family: monospace; list-style-type: none; padding-left: 5px;">
+                <li>{TCAG, GACT, GCAT, TACG}</li>
+                <li>{TCGA, GATC, GCTA, TAGC}</li>
+                <li>{CTAG, AGCT, CGAT, ATCG}</li>
+                <li>{CTGA, AGTC, CGTA, ATGC}</li>
+                <li>{TGCA, GTAC, TGAC, GTCA}</li> <!-- Исправил TGAC, GTCA на основании вашего файла -->
+                <li>{ACGT, CATG, ACTG, CAGT}</li>
+            </ul>
+            
+            <h3>Program Features:</h3>
+            <p>This tool allows you to:</p>
+            <ul>
+                <li>Visualize all 6 codogram orbits.</li>
+                <li>Display the 4 codograms within each orbit (E, R1(E), R2(E), R(E) of the orbit's representative).</li>
+                <li>Color codogram cells (XY-boxes) according to their Octet I or Octet II assignment for the standard genetic code.</li>
+                <li>Interactively apply R, R1, R2 transformations to the currently displayed orbit, observing the changes in nucleotide orders and codogram structures.</li>
+            </ul>
+            <p>The program aims to provide an intuitive and interactive way to study the profound mathematical and structural symmetries underlying the genetic code.</p>
+            
+            <hr style="margin: 20px 0; border-color: #ddd;">
+
+            <!-- Russian Version -->
+            <h2>Об Интерактивном Исследователе Орбит Румера</h2>
+            <p>Этот интерактивный веб-инструмент предназначен для визуализации, исследования и анализа структурных и математических симметрий, присущих генетическому коду. Особое внимание уделяется концепциям, впервые предложенным <strong>Юрием Борисовичем Румером</strong>, и их дальнейшему развитию.</p>
+            <h3>Научная основа и ключевые концепции:</h3>
+            <h4>1. Октеты Румера:</h4>
+            <p><strong>Ю.Б. Румер</strong> первым обратил внимание на то, что 16 "колонок" (XY-боксов, определяемых первыми двумя нуклеотидами кодона) в стандартной таблице генетического кода можно разделить на две группы по восемь колонок в каждой – <strong>Октеты</strong>.</p>
+            <ul>
+                <li><strong>Октет I:</strong> Включает XY-боксы, где все четыре кодона (XYN, где N - любой из четырех нуклеотидов) кодируют одну и ту же аминокислоту (полная 4-кратная вырожденность).</li>
+                <li><strong>Октет II:</strong> Включает остальные XY-боксы, где такой полной вырожденности нет.</li>
+            </ul>
+            <p>В данном инструменте принадлежность к Октету I или II определяется динамически для стандартного генетического кода на основе этого принципа 4-кратной вырожденности.</p>
+            
+            <h4>2. R-преобразование Румера:</h4>
+            <p><strong>Ю.Б. Румер</strong> также обнаружил, что Октеты I и II связаны простым преобразованием симметрии <strong>R = (T↔G, C↔A)</strong> (в нуклеотидах РНК: U↔G, C↔A). Это преобразование взаимно переводит XY-боксы из Октета I в Октет II и наоборот.</p>
+
+            <h4>3. Кодограммы и представления кода:</h4>
+            <p>Понятие <strong>кодограммы</strong> было введено <strong>Владимиром И. Щербаком</strong> и <strong>Максимом А. Макуковым</strong> (см. <a href="https://arxiv.org/pdf/1707.03382" target="_blank" rel="noopener noreferrer">Shcherbak & Makukov, 2013 / arXiv:1707.03382</a>) для визуализации структуры генетического кода. Кодограмма представляет собой квадрат 4x4, клетки которого окрашиваются в зависимости от принадлежности соответствующего XY-бокса к Октету I или Октету II.</p>
+            <p>Существует 24 возможных способа упорядочить нуклеотиды (T, C, A, G или U, C, A, G) на осях кодограммы, если порядок на обеих осях синхронен ("однородные представления").</p>
+
+            <h4>4. Односвязные кодограммы и группа преобразований {E, R, R1, R2}:</h4>
+            <p><strong>Александр Дмитриевич Панов</strong> (см. <a href="http://dec1.sinp.msu.ru/~panov" target="_blank" rel="noopener noreferrer">персональная страница</a>, <a href="https://www.socionauki.ru/news/3562368" target="_blank" rel="noopener noreferrer">публикация</a>) и <strong>Феликс Петрович Филатов</strong> проанализировали все 24 кодограммы и обнаружили, что среди них выделяются четыре "односвязные" кодограммы (две уникальные и две их зеркальные/повернутые версии). В таких кодограммах области, соответствующие Октетам I и II, являются сплошными, без разрывов.</p>
+            <p>Они также показали, что эти четыре односвязные кодограммы образуют замкнутую группу под действием преобразований:</p>
+            <ul>
+                <li><strong>R</strong> (полное Румеровское): U↔G, C↔A</li>
+                <li><strong>R1</strong> ("пуриновое" преобразование Румера): U↔G (A и C не меняются)</li>
+                <li><strong>R2</strong> ("пиримидиновое" преобразование Румера): C↔A (U и G не меняются)</li>
+                <li><strong>E</strong> (тождественное преобразование)</li>
+            </ul>
+            <p>Эти четыре преобразования {E, R, R1, R2} образуют математическую группу (группу Клейна V₄).</p>
+
+            <h4>5. Орбиты кодограмм:</h4>
+            <p>Я (<strong>Руслан Хафизов</strong>, контакт: <a href="mailto:jhgf10@gmail.com">jhgf10@gmail.com</a>), разработчик данного инструмента, установил, что все 24 кодограммы делятся на 6 непересекающихся "орбит" под действием группы преобразований {E, R, R1, R2}. Каждая такая орбита содержит 4 кодограммы:</p>
+            <ul style="font-family: monospace; list-style-type: none; padding-left: 5px;">
+                <li>{TCAG, GACT, GCAT, TACG}</li>
+                <li>{TCGA, GATC, GCTA, TAGC}</li>
+                <li>{CTAG, AGCT, CGAT, ATCG}</li>
+                <li>{CTGA, AGTC, CGTA, ATGC}</li>
+                <li>{TGCA, GTAC, TGAC, GTCA}</li>
+                <li>{ACGT, CATG, ACTG, CAGT}</li>
+            </ul>
+            
+            <h3>Функционал программы:</h3>
+            <p>Данный инструмент позволяет:</p>
+            <ul>
+                <li>Визуализировать все 6 орбит кодограмм.</li>
+                <li>Отображать 4 кодограммы внутри каждой орбиты (E, R1(E), R2(E), R(E) от представителя орбиты).</li>
+                <li>Окрашивать ячейки кодограмм (XY-боксы) в соответствии с их принадлежностью к Октету I или Октету II для стандартного генетического кода.</li>
+                <li>Интерактивно применять преобразования R, R1, R2 к текущей отображаемой орбите, наблюдая за изменениями в порядке нуклеотидов и структуре кодограмм.</li>
+            </ul>
+            <p>Цель программы — предоставить наглядный и интерактивный способ изучения глубоких математических и структурных симметрий, заложенных в основу генетического кода.</p>
+
+            <button id="closeAboutModalBtn" class="close-modal-btn">Закрыть</button>
+        </div>
+    </div>
+
+    <script>
+        const NUCLEOTIDES_ORDER_DEFAULT = ['T', 'C', 'A', 'G']; 
+        const OCTET_I_XY_PAIRS = new Set(["GC", "CG", "GG", "CC", "AC", "GT", "CT", "TC"]); 
+        const displayOrderKeys = ['E', 'R1', 'R2', 'R']; 
+
+        const orbitDisplayArea = document.getElementById('orbitDisplayArea');
+        const orbitSelectorPanel = document.getElementById('orbitSelectorPanel');
+        const transformationInfoPanel = document.getElementById('transformationInfoPanel');
+        const resetTransformsBtn = document.getElementById('resetTransformsBtn');
+        const aboutBtn = document.getElementById('aboutBtn');
+        const aboutModalOverlay = document.getElementById('aboutModalOverlay');
+        const closeAboutModalBtn = document.getElementById('closeAboutModalBtn');
+        
+        // Удаляем элементы, связанные с локализацией, если они не нужны
+        // const langToggleBtn = document.getElementById('langToggleBtn'); 
+        // let currentLanguage = 'en'; // По умолчанию английский
+        // document.documentElement.lang = currentLanguage;
+
+        let RUMER_ORBITS_DATA_INTERNAL = [];
+        let currentOrbitIndex = 0;
+        let activeOrbitButton = null;
+        let activeFormulaEl = null; 
+        let currentlyDisplayedOrders = { E: '', R1: '', R2: '', R: '' };
+        let initialOrbitOrders = { E: '', R1: '', R2: '', R: '' }; 
+        
+        function getPermutations(arr) { if (arr.length === 0) return [[]]; const firstEl = arr[0]; const rest = arr.slice(1); const permsWithoutFirst = getPermutations(rest); const allPermutations = []; permsWithoutFirst.forEach(perm => { for (let i = 0; i <= perm.length; i++) { const permWithFirst = [...perm.slice(0, i), firstEl, ...perm.slice(i)]; allPermutations.push(permWithFirst); } }); return allPermutations; }
+        function applyTransformToOrder(orderArray, transformType) { const newOrder = [...orderArray]; return newOrder.map(nucleotide => { switch (transformType) { case 'E': return nucleotide; case 'R': if (nucleotide === 'T') return 'G'; if (nucleotide === 'G') return 'T'; if (nucleotide === 'C') return 'A'; if (nucleotide === 'A') return 'C'; return nucleotide; case 'R1': if (nucleotide === 'T') return 'G'; if (nucleotide === 'G') return 'T'; return nucleotide; case 'R2': if (nucleotide === 'C') return 'A'; if (nucleotide === 'A') return 'C'; return nucleotide; default: return nucleotide; } }); }
+        function generateRumerOrbitsData() { const allPermutationArrays = getPermutations(NUCLEOTIDES_ORDER_DEFAULT); const allPermutationStrings = allPermutationArrays.map(p => p.join('')); const processedOrders = new Set(); let orbits = []; for (const p_str of allPermutationStrings) { if (processedOrders.has(p_str)) continue; const representativeOrderArray = p_str.split(''); const orbitMembers = { E: applyTransformToOrder(representativeOrderArray, 'E').join(''), R1: applyTransformToOrder(representativeOrderArray, 'R1').join(''), R2: applyTransformToOrder(representativeOrderArray, 'R2').join(''), R: applyTransformToOrder(representativeOrderArray, 'R').join('') }; Object.values(orbitMembers).forEach(memberOrder => processedOrders.add(memberOrder)); orbits.push({ representative: p_str, orders: orbitMembers, allMembersInOrbit: new Set(Object.values(orbitMembers)) }); } const targetOrder = "CTGA"; orbits.sort((a, b) => { const a_has_target = a.allMembersInOrbit.has(targetOrder); const b_has_target = b.allMembersInOrbit.has(targetOrder); if (a_has_target && !b_has_target) return -1; if (!a_has_target && b_has_target) return 1; return a.representative.localeCompare(b.representative); }); if (orbits.length > 0 && orbits[0].allMembersInOrbit.has(targetOrder)) { if (orbits[0].representative !== targetOrder) { const targetOrbitIndex = orbits.findIndex(o => o.representative === targetOrder || o.allMembersInOrbit.has(targetOrder)); if (targetOrbitIndex > 0) { const [targetOrbit] = orbits.splice(targetOrbitIndex, 1); orbits.unshift(targetOrbit); } if (orbits[0].representative !== targetOrder) { const newRepresentativeArray = targetOrder.split(''); orbits[0].representative = targetOrder; orbits[0].orders = { E: applyTransformToOrder(newRepresentativeArray, 'E').join(''), R1: applyTransformToOrder(newRepresentativeArray, 'R1').join(''), R2: applyTransformToOrder(newRepresentativeArray, 'R2').join(''), R: applyTransformToOrder(newRepresentativeArray, 'R').join('') }; orbits[0].allMembersInOrbit = new Set(Object.values(orbits[0].orders)); } } } return orbits; }
+        function createMiniMatrixElement(axisOrderArray, titleSuffix) { const overallContainer = document.createElement('div'); overallContainer.className = 'mini-matrix-overall-container'; const titleDiv = document.createElement('div'); titleDiv.className = 'matrix-title'; titleDiv.innerHTML = `${axisOrderArray.map(n => `<span class="nucleotide-in-title" data-nucleotide-val="${n}">${n}</span>`).join('')} (${titleSuffix})`; overallContainer.appendChild(titleDiv); const matrixWrapper = document.createElement('div'); matrixWrapper.className = 'mini-matrix-wrapper'; const topLabelsDiv = document.createElement('div'); topLabelsDiv.className = 'mini-matrix-labels-row mini-matrix-labels-top'; const cornerCell = document.createElement('div'); cornerCell.className = 'mini-matrix-corner-cell'; topLabelsDiv.appendChild(cornerCell); axisOrderArray.forEach(nucleotide => { const labelCell = document.createElement('div'); labelCell.className = 'mini-matrix-label-cell'; labelCell.textContent = nucleotide; labelCell.dataset.nucleotideVal = nucleotide; topLabelsDiv.appendChild(labelCell); }); matrixWrapper.appendChild(topLabelsDiv); const mainContentRow = document.createElement('div'); mainContentRow.className = 'mini-matrix-main-content-row'; const leftLabelsDiv = document.createElement('div'); leftLabelsDiv.className = 'mini-matrix-labels-col mini-matrix-labels-left'; axisOrderArray.forEach(nucleotide => { const labelCell = document.createElement('div'); labelCell.className = 'mini-matrix-label-cell'; labelCell.textContent = nucleotide; labelCell.dataset.nucleotideVal = nucleotide; leftLabelsDiv.appendChild(labelCell); }); mainContentRow.appendChild(leftLabelsDiv); const matrixDiv = document.createElement('div'); matrixDiv.className = 'mini-matrix'; for (let i = 0; i < 4; i++) { for (let j = 0; j < 4; j++) { const cell = document.createElement('div'); cell.className = 'mini-matrix-cell'; const pair = axisOrderArray[i] + axisOrderArray[j]; if (OCTET_I_XY_PAIRS.has(pair)) cell.classList.add('octet-I'); else cell.classList.add('octet-II'); matrixDiv.appendChild(cell); } } mainContentRow.appendChild(matrixDiv); matrixWrapper.appendChild(mainContentRow); overallContainer.appendChild(matrixWrapper); return overallContainer; }
+        
+        function clearAllHighlights(keepActiveFormula = false) { document.querySelectorAll('.highlighted-nucleotide-axis').forEach(el => el.classList.remove('highlighted-nucleotide-axis')); document.querySelectorAll('.highlighted-nucleotide-title').forEach(el => el.classList.remove('highlighted-nucleotide-title')); document.querySelectorAll('.transform-part.highlight-hover').forEach(el => el.classList.remove('highlight-hover')); if (!keepActiveFormula && activeFormulaEl) { activeFormulaEl.classList.remove('active-formula'); activeFormulaEl = null; } }
+        function highlightNucleotidesOnScreen(nucleotidesToHighlightArray) { document.querySelectorAll('.highlighted-nucleotide-axis').forEach(el => el.classList.remove('highlighted-nucleotide-axis')); document.querySelectorAll('.highlighted-nucleotide-title').forEach(el => el.classList.remove('highlighted-nucleotide-title')); nucleotidesToHighlightArray.forEach(nucleotide => { document.querySelectorAll(`.mini-matrix-label-cell[data-nucleotide-val="${nucleotide}"]`).forEach(cell => { cell.classList.add('highlighted-nucleotide-axis'); }); document.querySelectorAll(`.matrix-title span.nucleotide-in-title[data-nucleotide-val="${nucleotide}"]`).forEach(span => { span.classList.add('highlighted-nucleotide-title'); }); }); }
+        function redrawMatrices() { orbitDisplayArea.innerHTML = ''; const drawingOrderConfig = [ { orderKey: 'E', suffix: 'E', posClass: 'matrix-pos-0' }, { orderKey: 'R1', suffix: 'R1', posClass: 'matrix-pos-1' }, { orderKey: 'R2', suffix: 'R2', posClass: 'matrix-pos-2' }, { orderKey: 'R', suffix: 'R', posClass: 'matrix-pos-3' } ]; drawingOrderConfig.forEach(item => { const orderString = currentlyDisplayedOrders[item.orderKey]; if (orderString) { const matrixEl = createMiniMatrixElement(orderString.split(''), item.suffix); matrixEl.classList.add(item.posClass); orbitDisplayArea.appendChild(matrixEl); } else { console.warn("Order string is undefined for key:", item.orderKey, currentlyDisplayedOrders); } });}
+        
+        function selectInitialOrbit(orbitIndex) { 
+            clearAllHighlights();
+            const orbitData = RUMER_ORBITS_DATA_INTERNAL[orbitIndex];
+            if (!orbitData || !orbitData.orders) {
+                console.error("Invalid orbit data for index:", orbitIndex, RUMER_ORBITS_DATA_INTERNAL);
+                return;
+            }
+            initialOrbitOrders = { ...orbitData.orders }; 
+            currentlyDisplayedOrders = { ...orbitData.orders }; 
+            redrawMatrices();
+        }
+
+        function createOrbitSelectorButtons(orbitsData) { 
+            orbitSelectorPanel.querySelectorAll('button[data-orbit-index]').forEach(btn => btn.remove());
+            orbitsData.forEach((orbit, index) => { 
+                const button = document.createElement('button'); 
+                button.textContent = `Orbit ${index + 1} (${orbit.orders.E})`; 
+                button.title = `Show orbit ${index + 1} (E-element: ${orbit.orders.E})`; 
+                button.dataset.orbitIndex = index; 
+                button.addEventListener('click', function() { 
+                    if (activeOrbitButton) activeOrbitButton.classList.remove('active'); 
+                    currentOrbitIndex = parseInt(this.dataset.orbitIndex); 
+                    selectInitialOrbit(currentOrbitIndex); 
+                    this.classList.add('active'); 
+                    activeOrbitButton = this; 
+                }); 
+                // Вставляем перед кнопкой "About"
+                const aboutButton = document.getElementById('aboutBtn');
+                if (aboutButton) {
+                    orbitSelectorPanel.insertBefore(button, aboutButton);
+                } else { // Если кнопки "About" нет (на всякий случай)
+                    orbitSelectorPanel.appendChild(button);
+                }
+                
+                if (index === 0) { 
+                    button.classList.add('active'); 
+                    activeOrbitButton = button; 
+                } 
+            }); 
+        }
+        
+        resetTransformsBtn.addEventListener('click', () => {
+            selectInitialOrbit(currentOrbitIndex); 
+        });
+
+        aboutBtn.addEventListener('click', () => {
+            aboutModalOverlay.classList.add('active');
+        });
+        closeAboutModalBtn.addEventListener('click', () => {
+            aboutModalOverlay.classList.remove('active');
+        });
+        aboutModalOverlay.addEventListener('click', (event) => { 
+            if (event.target === aboutModalOverlay) {
+                aboutModalOverlay.classList.remove('active');
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', () => { 
+            RUMER_ORBITS_DATA_INTERNAL = generateRumerOrbitsData(); 
+            if (RUMER_ORBITS_DATA_INTERNAL.length !== 6) { console.error("Ошибка генерации орбит!"); orbitDisplayArea.textContent = "Ошибка."; return; } 
+            
+            createOrbitSelectorButtons(RUMER_ORBITS_DATA_INTERNAL); 
+            if (RUMER_ORBITS_DATA_INTERNAL.length > 0 && RUMER_ORBITS_DATA_INTERNAL[0].orders) {
+                 selectInitialOrbit(0); 
+            } else {
+                console.error("Failed to select initial orbit, data missing.");
+            }
+            // Интерфейс теперь статично на английском, updateUIText() не нужен для смены языка
+            // Но может понадобиться для установки начальных текстов, если они не в HTML
+            // Однако, в данном случае большинство текстов в HTML, кроме кнопок орбит
+
+            transformationInfoPanel.querySelectorAll('.formula').forEach(formulaEl => {
+                formulaEl.addEventListener('click', function() {
+                    const transformType = this.dataset.applyTransform;
+                    const nucleotidesToHighlightStr = this.dataset.highlightNucleotides;
+                    let reapplyHighlight = false;
+
+                    if (activeFormulaEl === this) { 
+                        clearAllHighlights(); 
+                        currentlyDisplayedOrders = { ...initialOrbitOrders }; 
+                        redrawMatrices();
+                        return; 
+                    }
+                    
+                    if (activeFormulaEl) activeFormulaEl.classList.remove('active-formula');
+                    this.classList.add('active-formula');
+                    activeFormulaEl = this;
+                    
+                    clearAllHighlights(true); 
+
+                    if (nucleotidesToHighlightStr) {
+                        highlightNucleotidesOnScreen(nucleotidesToHighlightStr.split(','));
+                        reapplyHighlight = true; 
+                    }
+                    
+                    let baseOrdersForTransform = { ...initialOrbitOrders };
+
+                    displayOrderKeys.forEach(key => {
+                        if (baseOrdersForTransform[key]) { // Проверка, что порядок существует
+                           currentlyDisplayedOrders[key] = applyTransformToOrder(
+                                baseOrdersForTransform[key].split(''), transformType
+                            ).join('');
+                        } else {
+                            console.warn(`Initial order for key ${key} is undefined.`);
+                            currentlyDisplayedOrders[key] = ''; // или оставить как есть, или сбросить
+                        }
+                    });
+                    
+                    redrawMatrices(); 
+                     if (reapplyHighlight && nucleotidesToHighlightStr) { 
+                        highlightNucleotidesOnScreen(nucleotidesToHighlightStr.split(','));
+                    }
+                });
+
+                formulaEl.querySelectorAll('.transform-part').forEach(part => {
+                    part.addEventListener('mouseenter', () => {
+                        if (!formulaEl.classList.contains('active-formula')) { 
+                            const nucleotides = part.dataset.nucleotides;
+                            if (nucleotides) {
+                                part.classList.add('highlight-hover'); 
+                                highlightNucleotidesOnScreen(nucleotides.split(',')); 
+                            }
+                        }
+                    });
+                    part.addEventListener('mouseleave', () => {
+                        part.classList.remove('highlight-hover');
+                        if (!activeFormulaEl || (activeFormulaEl && !activeFormulaEl.contains(part))) {
+                             clearAllHighlights(!!activeFormulaEl); 
+                        }
+                        if (activeFormulaEl && (!activeFormulaEl.contains(part) || formulaEl === activeFormulaEl)) {
+                             const activeNucleotides = activeFormulaEl.dataset.highlightNucleotides;
+                             if (activeNucleotides) {
+                                 highlightNucleotidesOnScreen(activeNucleotides.split(','));
+                             }
+                        } else if (activeFormulaEl && formulaEl !== activeFormulaEl) { 
+                            const activeNucleotides = activeFormulaEl.dataset.highlightNucleotides;
+                            if (activeNucleotides) {
+                                highlightNucleotidesOnScreen(activeNucleotides.split(','));
+                            }
+                        }
+                    });
+                });
+            });
+            
+            document.body.addEventListener('click', function(event) { 
+                const isClickInsideTransformPanel = transformationInfoPanel.contains(event.target);
+                const isClickInsideOrbitSelector = orbitSelectorPanel.contains(event.target);
+                const isClickInsideAboutModal = aboutModalOverlay.contains(event.target) && aboutModalOverlay.classList.contains('active');
+
+                if (!isClickInsideTransformPanel && !isClickInsideOrbitSelector && !isClickInsideAboutModal && activeFormulaEl) { 
+                    clearAllHighlights();
+                    currentlyDisplayedOrders = { ...initialOrbitOrders };
+                    redrawMatrices();
+                } 
+            }, true); 
+        });
+    </script>
+</body>
+</html>
