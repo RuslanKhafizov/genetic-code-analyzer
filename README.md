@@ -2,7 +2,7 @@
 An interactive tool demonstrating the division of all 24 genetic code calligrams into 6 distinct orbits under Rumer-related transformations.
 # Interactive Rumer Orbit Explorer
 
-This interactive web tool is designed for visualizing, exploring, and analyzing the structural and mathematical symmetries inherent in the genetic code. It focuses on the concepts first proposed by **Yuri Borisovich Rumer** and subsequent developments related to calligram (or "codogram") transformations and orbits.
+This interactive web tool is designed for visualizing, exploring, and analyzing the structural and mathematical symmetries inherent in the genetic code. It focuses on the concepts first proposed by **Yuri Borisovich Rumer** and subsequent developments related to codogram transformations and orbits.
 
 The application is implemented فيلمstrip (using vanilla JavaScript without external frameworks like React for this particular version) and renders directly in the browser.
 
@@ -19,8 +19,8 @@ The tool visualizes and allows interaction with the following core ideas:
 2.  **Rumer's R-Transformation:**
     *   **Y.B. Rumer** also identified a symmetry transformation **R = (T↔G, C↔A)** (or U↔G, C↔A in RNA) that interconverts XY-boxes between Octet I and Octet II.
 
-3.  **Codograms (Calligrams) and Code Representations:**
-    *   The concept of a **codogram** (often referred to as a calligram) was introduced by **Vladimir I. Shcherbak** and **Maxim A. Makukov** (see <a href="https://arxiv.org/pdf/1707.03382" target="_blank" rel="noopener noreferrer">Shcherbak & Makukov, 2013 / arXiv:1707.03382</a>) as a 4x4 visual representation of the genetic code, where cells are colored based on their Octet I/II assignment.
+3.  **Codograms and Code Representations:**
+    *   The concept of a **codogram** was introduced by **Vladimir I. Shcherbak** and **Maxim A. Makukov** (see <a href="https://arxiv.org/pdf/1707.03382" target="_blank" rel="noopener noreferrer">Shcherbak & Makukov, 2013 / arXiv:1707.03382</a>) as a 4x4 visual representation of the genetic code, where cells are colored based on their Octet I/II assignment.
     *   There are 24 possible "homogeneous representations" when ordering the four nucleotides on the axes of the codogram.
 
 4.  **Simply-Connected Codograms and the {E, R, R1, R2} Transformation Group:**
@@ -32,7 +32,7 @@ The tool visualizes and allows interaction with the following core ideas:
         *   **E** (identity)
     *   These form the Klein four-group (V₄).
 
-5.  **Codogram Orbits (Research by Ruslan Khafizov):**
+5.  **Codogram Orbits:**
     *   **Ruslan Khafizov** (contact: <a href="mailto:jhgf10@gmail.com">jhgf10@gmail.com</a>), the developer of this tool, established that all 24 homogeneous codograms are divided into **6 disjoint orbits** by the {E, R, R1, R2} transformation group. Each orbit contains 4 codograms:
         *   {TCAG, GACT, GCAT, TACG}
         *   {TCGA, GATC, GCTA, TAGC}
@@ -40,6 +40,17 @@ The tool visualizes and allows interaction with the following core ideas:
         *   {CTGA, AGTC, CGTA, ATGC}
         *   {TGCA, GTAC, TGAC, GTCA}
         *   {ACGT, CATG, ACTG, CAGT}
+
+## Physico-Chemical and Structural Consequences of Rumer Transformations Analyzed
+
+1.  **Conservation of Amino/Keto Type of XY-boxes:**
+    All Rumer transformations (R, R1, R2) preserve the amino-group (A, C) or keto-group (U, G) nature of each nucleotide. Consequently, the classification of XY-boxes based on the amino/keto composition of their nucleotide positions (e.g., Amino-Keto, Keto-Keto) is invariant under the entire Rumer transformation group.
+
+2.  **Purine ↔ Pyrimidine Transformations (Transversions):**
+    The full R-transformation (U↔G, C↔A) always acts as a transversion for both nucleotides in an XY-box, changing a purine to a pyrimidine and vice versa. The "half" transformations R1 (U↔G) and R2 (C↔A) also perform transversions but only for the nucleotides they affect.
+
+3.  **Regular Changes in Nucleotide Bonding "Strength":**
+    Rumer transformations lead to predictable changes in nucleotide "strength" (H-bonds: Weak W – A/U; Strong S – G/C). The full R-transformation always changes the strength of each nucleotide in an XY-box (W↔S); R1 and R2 alter strength only for their target pairs.
 
 ## Features
 
@@ -53,8 +64,7 @@ This tool allows users to:
 
 ## How to Use
 
-Simply open the `index.html` (or `Khafizov_Ruslan (1).html` if you haven't renamed it) file in a modern web browser.
-Alternatively, if deployed via GitHub Pages, access it via the provided URL.
+Simply open the `index.html` file in a modern web browser or https://ruslankhafizov.github.io/genetic-code-analyzer
 
 ## Technologies Used
 
