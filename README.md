@@ -1,17 +1,13 @@
-# genetic-code-analyzer
+# Interactive explorer of genetic code symmetries.
+
 An interactive tool demonstrating the division of all 24 genetic code calligrams into 6 distinct orbits under Rumer-related transformations.
-# Interactive Rumer Orbit Explorer
-
-This interactive web tool is designed for visualizing, exploring, and analyzing the structural and mathematical symmetries inherent in the genetic code. It focuses on the concepts first proposed by **Yuri Borisovich Rumer** and subsequent developments related to codogram transformations and orbits.
-
-The application is implemented فيلمstrip (using vanilla JavaScript without external frameworks like React for this particular version) and renders directly in the browser.
 
 ## Scientific Background and Key Concepts
 
 The tool visualizes and allows interaction with the following core ideas:
 
 1.  **Rumer's Octets:**
-    *   As first noted by **Y.B. Rumer**, the 16 "columns" (XY-boxes, defined by the first two nucleotides of a codon) in the standard genetic code table can be divided into two groups of eight:
+    *   As first noted by (see <a href="https://www.prometeus.nsc.ru/science/schools/rumer/works/1968.ssi" target="_blank" rel="noopener noreferrer">Y.B. Rumer>), the 16 "columns" (XY-boxes, defined by the first two nucleotides of a codon) in the standard genetic code table can be divided into two groups of eight:
         *   **Octet I:** XY-boxes where all four codons (XYN) code for the same amino acid (4-fold degeneracy).
         *   **Octet II:** The remaining XY-boxes without such complete degeneracy.
     *   This tool dynamically determines Octet I/II assignment for the standard genetic code.
