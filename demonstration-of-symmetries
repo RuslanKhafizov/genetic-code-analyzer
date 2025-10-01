@@ -1,0 +1,743 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Genetic Code Analyzer [Final Version]</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tinycolor/1.6.0/tinycolor.min.js"></script>
+    <style>
+        body { font-family: sans-serif; overflow: hidden; height: 100vh; }
+        #root { height: 100vh; display: flex; flex-direction: column; }
+        .control-panel { 
+            width: 14rem; min-width: 14rem; padding: 0.5rem; border-right: 1px solid #e5e7eb;
+            flex-shrink: 0; overflow-y: auto;
+        }
+        .control-panel-section { margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid #e5e7eb;}
+        .control-panel-section:last-of-type { border-bottom: none; }
+        .control-panel-section h3 { margin-top: 0; margin-bottom: 5px; color: #343a40; font-size: 0.85rem; font-weight: 600; }
+        
+        .matrix-table-container { min-width: calc(4 * 8.5rem + 3.5rem + 4px); }
+        .matrix-table-wrapper { display: flex; justify-content: center; width: 100%; }
+        .matrix-big-cell { padding: 2px; vertical-align: top; }
+        .sub-row-grid { 
+            display: grid; grid-template-columns: 1fr; grid-template-rows: repeat(4, 1fr); 
+            gap: 1.5px; height: 100%; width: 100%;
+        }
+        .sub-row-item { 
+            display: flex; flex-direction: row; justify-content: stretch; align-items: stretch; 
+            border: 1px solid #d1d5db; 
+            border-radius: 2px; overflow: hidden; text-align: center;
+            cursor: pointer;
+        }
+        .sub-row-item.selected-for-summing {
+            outline: 2px solid #0d6efd; 
+            outline-offset: -1px; 
+            box-shadow: 0 0 6px rgba(13, 110, 253, 0.6);
+        }
+        .sub-row-codon-part {
+            font-family: monospace; font-size: 0.85rem; font-weight: 500; 
+            padding: 1px 3px; flex-basis: 45%; 
+            display: flex; align-items: center; justify-content: center;
+            border-right: 1px solid #e0e0e0; 
+        }
+        .sub-row-info-part {
+            padding: 1px 2px; flex-basis: 55%;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            line-height: 1.1;
+        }
+        .sub-row-info-part .aa-name {
+            font-family: sans-serif; font-weight: bold; font-size: 0.85rem;
+        }
+        .sub-row-info-part .mass-value {
+            font-family: monospace; font-size: 0.7rem; opacity: 0.8;
+        }
+        .matrix-header-cell { background-color: #f0f0f0; }
+
+        .order-part { cursor: pointer; padding: 0.1rem 0.25rem; border-radius: 0.125rem; }
+        .order-part:hover { background-color: #e0e0e0; }
+        .order-part.active { background-color: #007bff; color: white; font-weight: bold; }
+        
+        .matrix-instance-properties-panel { 
+             width: 13rem; min-width: 13rem; padding: 0.5rem; border-left: 1px solid #e5e7eb; 
+             flex-shrink: 0; overflow-y: auto;
+        }
+        
+        .demo-set-btn {
+            font-size: 0.7rem; padding: 4px 8px; border: 1px solid #ccc;
+            border-radius: 4px; background-color: #f8f9fa;
+            cursor: pointer;
+            text-align: center;
+        }
+        .demo-set-btn:hover { background-color: #e9ecef; }
+        
+        .mode-btn {
+            width: 100%; padding: 8px 4px; font-size: 0.75rem; border-radius: 4px;
+            border: 1px solid #ccc; background-color: #f8f9fa; cursor: pointer;
+        }
+        .mode-btn:hover { background-color: #e9ecef; }
+        .mode-btn.active {
+            background-color: #0d6efd; color: white; border-color: #0d6efd; font-weight: bold;
+        }
+
+        /* Modal Styles */
+        .modal-backdrop {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 800px;
+            height: 80%;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .modal-body {
+            overflow-y: auto;
+            flex-grow: 1;
+            font-family: serif;
+        }
+        .modal-body h2 { font-size: 1.5rem; font-weight: 600; margin-bottom: 1rem; color: #333; }
+        .modal-body h3 { font-size: 1.2rem; font-weight: 600; margin-top: 1.5rem; margin-bottom: 0.75rem; color: #444; }
+        .modal-body p, .modal-body li { color: #555; line-height: 1.6; }
+        .modal-body strong { color: #222; }
+        .modal-body ul { list-style-position: inside; padding-left: 0.5rem; }
+        .modal-body a { color: #007bff; text-decoration: underline; }
+        .modal-footer {
+            margin-top: 1.5rem;
+            text-align: right;
+            flex-shrink: 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useMemo, Fragment, useCallback } = React;
+
+        // --- 1. CORE DATA AND UTILITIES ---
+        const baseNucleotidesInternalGlobal = ['U', 'C', 'A', 'G'];
+        const formatNucleotideDisplay = (nuc) => (nuc === 'U' ? 'T' : nuc);
+        const formatOrderForDisplay = (orderArray) => orderArray.map(formatNucleotideDisplay).join('');
+
+        const geneticCodeTable = {'UUU':'Phe','UUC':'Phe','UUA':'Leu','UUG':'Leu','UCU':'Ser','UCC':'Ser','UCA':'Ser','UCG':'Ser','UAU':'Tyr','UAC':'Tyr','UAA':'STOP','UAG':'STOP','UGU':'Cys','UGC':'Cys','UGA':'STOP','UGG':'Trp','CUU':'Leu','CUC':'Leu','CUA':'Leu','CUG':'Leu','CCU':'Pro','CCC':'Pro','CCA':'Pro','CCG':'Pro','CAU':'His','CAC':'His','CAA':'Gln','CAG':'Gln','CGU':'Arg','CGC':'Arg','CGA':'Arg','CGG':'Arg','AUU':'Ile','AUC':'Ile','AUA':'Ile','AUG':'Met','ACU':'Thr','ACC':'Thr','ACA':'Thr','ACG':'Thr','AAU':'Asn','AAC':'Asn','AAA':'Lys','AAG':'Lys','AGU':'Ser','AGC':'Ser','AGA':'Arg','AGG':'Arg','GUU':'Val','GUC':'Val','GUA':'Val','GUG':'Val','GCU':'Ala','GCC':'Ala','GCA':'Ala','GCG':'Ala','GAU':'Asp','GAC':'Asp','GAA':'Glu','GAG':'Glu','GGU':'Gly','GGC':'Gly','GGA':'Gly','GGG':'Gly'};
+        
+        const AMINO_ACID_BACKBONE_MASS = 74;
+        const PROLINE_SIDE_CHAIN_MASS = 41;
+        
+        const aminoAcidAtomicWeights = {'Gly': 75,  'Ala': 89,   'Ser': 105,  'Pro': 115,  'Val': 117, 'Thr': 119, 'Cys': 121,  'Leu': 131,  'Ile': 131,  'Asn': 132, 'Asp': 133, 'Gln': 146,  'Lys': 146,  'Glu': 147,  'Met': 149, 'His': 155, 'Phe': 165,  'Arg': 174,  'Tyr': 181,  'Trp': 204 };
+        const aminoAcidNucleonCounts = {
+            'Ala': { p: 48, n: 41 }, 'Arg': { p: 94, n: 80 }, 'Asn': { p: 70, n: 62 },
+            'Asp': { p: 70, n: 63 }, 'Cys': { p: 64, n: 57 }, 'Gln': { p: 78, n: 68 },
+            'Glu': { p: 78, n: 69 }, 'Gly': { p: 40, n: 35 }, 'His': { p: 82, n: 73 },
+            'Ile': { p: 72, n: 59 }, 'Leu': { p: 72, n: 59 }, 'Lys': { p: 80, n: 66 },
+            'Met': { p: 80, n: 69 }, 'Phe': { p: 88, n: 77 }, 'Pro': { p: 62, n: 53 },
+            'Ser': { p: 56, n: 49 }, 'Thr': { p: 64, n: 55 }, 'Trp': { p: 108, n: 96 },
+            'Tyr': { p: 96, n: 85 }, 'Val': { p: 64, n: 53 }
+        };
+
+        const ACTIVATION_KEYS = {
+            START: { sideChainMass: 74 },
+            STOP: {
+                protons: 116,
+                neutrons: 106,
+                sideChainMass: 222
+            }
+        };
+
+        const getSideChainMass = (aa) => {
+            if (!aa) return 0;
+            if (aa === 'STOP') return 0;
+            if (aa === 'Pro') return PROLINE_SIDE_CHAIN_MASS;
+            if (aminoAcidAtomicWeights[aa]) {
+                return aminoAcidAtomicWeights[aa] - AMINO_ACID_BACKBONE_MASS;
+            }
+            return 0;
+        };
+        
+        const STANDARD_OCTET_I_XY_PAIRS_INTERNAL = new Set(["GC", "CG", "GG", "CC", "AC", "GU", "CU", "UC"]);
+        const RUMER_OCTET_COLORS = {
+            octetI: { bg: '#C084FC', text: '#5B21B6' },
+            octetII: { bg: '#FEFCE8', text: '#854D0E' }
+        };
+        
+        const QUARTET_1A = new Set(['UC', 'CC', 'AC', 'GC']);
+        const QUARTET_1B = new Set(['CU', 'CG', 'GU', 'GG']);
+        const QUARTET_2A = new Set(['UA', 'CA', 'AA', 'GA']);
+        const QUARTET_2B = new Set(['UU', 'UG', 'AU', 'AG']);
+        const QUARTET_COLORS = {
+            Q1A: '#fecaca', Q1B: '#fed7aa',
+            Q2A: '#bbf7d0', Q2B: '#bfdbfe'
+        };
+        const K_PAIR_COLOR = { bg: '#3b82f6', text: 'white' }; // Blue
+        const M_PAIR_COLOR = { bg: '#facc15', text: 'black' }; // Yellow
+
+        function generatePermutations(inputArray) {
+            const result = [];
+            const permute = (arr, l, r) => {
+                if (l === r) { result.push([...arr]); } 
+                else { for (let i = l; i <= r; i++) { [arr[l], arr[i]] = [arr[i], arr[l]]; permute(arr, l + 1, r); [arr[l], arr[i]] = [arr[i], arr[l]]; } }
+            };
+            permute([...inputArray], 0, inputArray.length - 1);
+            return result;
+        }
+
+        let RUMER_ORBITS_DATA_CACHE = null;
+        function generateRumerOrbitsData() {
+            if (RUMER_ORBITS_DATA_CACHE) return RUMER_ORBITS_DATA_CACHE;
+            const allPermutations = generatePermutations(baseNucleotidesInternalGlobal);
+            const processedOrders = new Set();
+            const orbits = [];
+            const rumerTransformBase = (base) => { if (base === 'U') return 'G'; if (base === 'G') return 'U'; if (base === 'C') return 'A'; if (base === 'A') return 'C'; };
+            for (const p_arr of allPermutations) {
+                const p_str = p_arr.join('');
+                if (processedOrders.has(p_str)) continue;
+                const orbitMembers = {
+                    E: p_str,
+                    R: p_arr.map(rumerTransformBase).join(''),
+                    R1: p_arr.map(n => (n === 'U' ? 'G' : n === 'G' ? 'U' : n)).join(''),
+                    R2: p_arr.map(n => (n === 'C' ? 'A' : n === 'A' ? 'C' : n)).join('')
+                };
+                Object.values(orbitMembers).forEach(member => processedOrders.add(member));
+                orbits.push({ representative: p_str, orders: orbitMembers });
+            }
+            RUMER_ORBITS_DATA_CACHE = orbits;
+            return orbits;
+        }
+        
+        const ALL_CODONS_INTERNAL = Object.keys(geneticCodeTable);
+        const DEMO_SETS = {
+            '1': () => new Set(ALL_CODONS_INTERNAL),
+            '2': () => new Set(ALL_CODONS_INTERNAL.filter(c => c[2] === 'A' || c[2] === 'C')),
+            '3': () => new Set(ALL_CODONS_INTERNAL.filter(c => c[2] === 'U' || c[2] === 'G')),
+            '4': () => new Set(ALL_CODONS_INTERNAL.filter(c => c[2] === 'A' || c[2] === 'U')),
+            '5': () => new Set(ALL_CODONS_INTERNAL.filter(c => c[2] === 'C' || c[2] === 'G')),
+            '6': () => {
+                const octetICodons = new Set();
+                STANDARD_OCTET_I_XY_PAIRS_INTERNAL.forEach(pair => {
+                    baseNucleotidesInternalGlobal.forEach(nuc3 => octetICodons.add(pair + nuc3));
+                });
+                return octetICodons;
+            },
+            '7': () => {
+                const octetI = DEMO_SETS['6']();
+                return new Set(ALL_CODONS_INTERNAL.filter(c => !octetI.has(c)));
+            },
+            '8': () => new Set([...DEMO_SETS['6']()].filter(c => c[2] === 'G' || c[2] === 'U')),
+            '9': () => new Set([...DEMO_SETS['6']()].filter(c => c[2] === 'C' || c[2] === 'A')),
+            '10': () => new Set([...DEMO_SETS['6']()].filter(c => c[2] === 'U' || c[2] === 'A')),
+            '11': () => new Set([...DEMO_SETS['6']()].filter(c => c[2] === 'C' || c[2] === 'G')),
+            '12': () => new Set([...DEMO_SETS['6']()].filter(c => c[2] === 'C')),
+            '13': () => new Set([...DEMO_SETS['6']()].filter(c => c[2] === 'G')),
+            '14': () => new Set([...DEMO_SETS['6']()].filter(c => c[2] === 'U')),
+            '15': () => new Set([...DEMO_SETS['6']()].filter(c => c[2] === 'A')),
+            '16': () => new Set([...DEMO_SETS['7']()].filter(c => c[2] === 'G' || c[2] === 'U')),
+            '17': () => new Set([...DEMO_SETS['7']()].filter(c => c[2] === 'C' || c[2] === 'A')),
+            '18': () => new Set([...DEMO_SETS['7']()].filter(c => c[2] === 'U' || c[2] === 'A')),
+            '19': () => new Set([...DEMO_SETS['7']()].filter(c => c[2] === 'C' || c[2] === 'G')),
+            '20': () => new Set([...DEMO_SETS['7']()].filter(c => c[2] === 'C')),
+            '21': () => new Set([...DEMO_SETS['7']()].filter(c => c[2] === 'G')),
+            '22': () => new Set([...DEMO_SETS['7']()].filter(c => c[2] === 'U')),
+            '23': () => new Set([...DEMO_SETS['7']()].filter(c => c[2] === 'A')),
+            '24': () => new Set([...DEMO_SETS['6']()].filter(c => c[2] === 'A' || c[2] === 'G')),
+            '25': () => new Set([...DEMO_SETS['6']()].filter(c => c[2] === 'C' || c[2] === 'U')),
+            '26': () => new Set([...DEMO_SETS['7']()].filter(c => c[2] === 'A' || c[2] === 'G')),
+            '27': () => new Set([...DEMO_SETS['7']()].filter(c => c[2] === 'C' || c[2] === 'U')),
+        };
+        const DEMO_SET_LABELS = {
+            '1': {label: 'All Codons', group: 'Global Sets'},
+            '2': {label: '3rd: C/A', group: 'Global Sets'},
+            '3': {label: '3rd: G/U', group: 'Global Sets'},
+            '4': {label: '3rd: U/A', group: 'Global Sets'},
+            '5': {label: '3rd: C/G', group: 'Global Sets'},
+            '6': {label: 'Full Octet I', group: 'Octet I Sets'},
+            '8': {label: 'Octet I (G/U)', group: 'Octet I Sets'},
+            '9': {label: 'Octet I (C/A)', group: 'Octet I Sets'},
+            '10': {label: 'Octet I (U/A)', group: 'Octet I Sets'},
+            '11': {label: 'Octet I (C/G)', group: 'Octet I Sets'},
+            '12': {label: 'Octet I (C)', group: 'Octet I (Quants)'},
+            '13': {label: 'Octet I (G)', group: 'Octet I (Quants)'},
+            '14': {label: 'Octet I (U)', group: 'Octet I (Quants)'},
+            '15': {label: 'Octet I (A)', group: 'Octet I (Quants)'},
+            '7': {label: 'Full Octet II', group: 'Octet II Sets'},
+            '16': {label: 'Octet II (G/U)', group: 'Octet II Sets'},
+            '17': {label: 'Octet II (C/A)', group: 'Octet II Sets'},
+            '18': {label: 'Octet II (U/A)', group: 'Octet II Sets'},
+            '19': {label: 'Octet II (C/G)', group: 'Octet II Sets'},
+            '20': {label: 'Octet II (C)', group: 'Octet II (Quants)'},
+            '21': {label: 'Octet II (G)', group: 'Octet II (Quants)'},
+            '22': {label: 'Octet II (U)', group: 'Octet II (Quants)'},
+            '23': {label: 'Octet II (A)', group: 'Octet II (Quants)'},
+            '24': {label: 'Octet I (Purines)', group: 'Purine/Pyrimidine Sets'},
+            '25': {label: 'Octet I (Pyrimidines)', group: 'Purine/Pyrimidine Sets'},
+            '26': {label: 'Octet II (Purines)', group: 'Purine/Pyrimidine Sets'},
+            '27': {label: 'Octet II (Pyrimidines)', group: 'Purine/Pyrimidine Sets'},
+        };
+
+        // --- 2. REACT COMPONENTS ---
+        
+        const InfoModal = ({ isOpen, onClose }) => {
+            if (!isOpen) return null;
+
+            return (
+                <div className="modal-backdrop" onClick={onClose}>
+                    <div className="modal-content" onClick={e => e.stopPropagation()}>
+                        <div className="modal-body">
+                            <h2>FRACTAL-TOPOLOGICAL ARCHITECTURE OF THE STANDARD GENETIC CODE</h2>
+                            <p>
+                                <strong>Author:</strong> Ruslan Khafizov, Independent Researcher <br />
+                                <a href="https://www.facebook.com/russopirato" target="_blank" rel="noopener noreferrer">Facebook</a> | <a href="https://www.youtube.com/@ruslankhafizov251" target="_blank" rel="noopener noreferrer">YouTube</a>
+                            </p>
+                            
+                            <h3>Main Thesis:</h3>
+                            <p>The genetic code is not a random set of rules but a unified, multi-level information system with a fractal, topological, and numerical organization. Its properties are revealed in two analytical states: a "Biochemical" state and an "Informationally Activated" state.</p>
+
+                            <h3>PART I: SYMMETRIES OF THE "BIOCHEMICAL" STATE</h3>
+                            <p>(Calculations based on M_side(Proline)=41 and all STOP codon parameters = 0)</p>
+                            
+                            <h4>1. GLOBAL CROSS-SYMMETRY (1776 = 1776)</h4>
+                            <p>When all 64 codons are partitioned into two groups by their 3rd position:</p>
+                            <ul>
+                                <li><strong>C/A Group (32 codons):</strong> The sum of Neutrons = 1776.</li>
+                                <li><strong>G/U Group (32 codons):</strong> The sum of Side-Chain Masses = 1776.</li>
+                            </ul>
+                            <p>This exact identity connects a biochemical property of one half of the code with a subatomic property of the other half.</p>
+
+                            <h4>2. FRACTAL STRUCTURE OF OCTET I ("THE IDEAL CORE")</h4>
+                            <p>Octet I (32 codons) exhibits a perfect hierarchy:</p>
+                            <ul>
+                                <li><strong>16-codon level:</strong> When partitioned into two groups (C/A and G/U), it yields two absolutely identical halves with M_side = 666, Protons = 1000, and Neutrons = 850.</li>
+                                <li><strong>8-codon level ("Quanta"):</strong> Further partitioning into four groups (by nucleotides C, A, U, G) yields four absolutely identical "quanta," each with the following parameters:
+                                    <ul>
+                                        <li>M_side = 333 (= 9 * 37 = 3² * 37)</li>
+                                        <li>Protons = 500</li>
+                                        <li>Neutrons = 425</li>
+                                    </ul>
+                                </li>
+                            </ul>
+
+                            <h4>3. COMPENSATORY HARMONY OF OCTET II ("THE VARIABLE PERIPHERY")</h4>
+                            <p>Octet II is asymmetrical but follows a hidden order:</p>
+                            <ul>
+                                <li><strong>Ideal Pyrimidine Symmetry:</strong> The 8-codon "quanta" ending in C and U are absolutely identical (M_side=531, P=598, N=525).</li>
+                                <li><strong>Compensatory Balance:</strong> The asymmetrical purine "quanta" (A and G) are balanced such that their sums according to Rumer's pairs yield "magic numbers":
+                                    <ul>
+                                        <li>Sum of M_side (C/A) = 962 (= 26 * 37)</li>
+                                        <li>Sum of M_side (G/U) = 1110 (= 30 * 37)</li>
+                                    </ul>
+                                </li>
+                            </ul>
+
+                            <h3>PART II: THE "INFORMATIONALLY ACTIVATED" STATE</h3>
+
+                            <h4>1. DERIVATION OF THE "ACTIVATION KEYS"</h4>
+                            <p>From the condition that the asymmetries of Octet II must be balanced, a unique, self-referential set of "informational weights" for the signal codons is mathematically derived:</p>
+                            <ul>
+                                <li><strong>STOP Codon Key (for all 3):</strong>
+                                    <ul>
+                                        <li>M_side = 222</li>
+                                        <li>Protons = 116</li>
+                                        <li>Neutrons = 106</li>
+                                    </ul>
+                                </li>
+                                <li><strong>START Codon Key (for AUG):</strong>
+                                    <ul>
+                                        <li>Additional M_side = +74</li>
+                                    </ul>
+                                </li>
+                            </ul>
+                            <p>These keys are not arbitrary; they are calculated from the code's own fundamental constants: the backbone mass (74) and Proline's physical side-chain mass (42), e.g., P(STOP) = 116 = 74 + 42.</p>
+
+                            <h4>2. EMERGENCE OF IDEAL BALANCE</h4>
+                            <p>Applying these keys transforms the entire system:</p>
+                            <ul>
+                                <li><strong>Global Direct Balance:</strong> The global C/A and G/U groups become perfectly equal in activated M_side (2072 = 2072).</li>
+                                <li><strong>Ideal Paired Symmetry in Octet II:</strong> The "quanta" C and U remain identical, and the "quanta" A and G also become perfectly identical across all three metrics (M_side=875, P=706, N=613).</li>
+                            </ul>
+
+                            <h3>PART III: TOPOLOGICAL ARCHITECTURE</h3>
+
+                            <h4>1. QUARTETS AS "BUILDING BLOCKS"</h4>
+                            <p>The numerical symmetries align perfectly with the topological division of the code into 4 Quartets (1A, 1B, 2A, 2B):</p>
+                            <ul>
+                                <li><strong>In Octet I:</strong> Quartets 1A and 1B are internally balanced (e.g., within 1A, M_side(C/A) = M_side(G/U)).</li>
+                                <li><strong>In Octet II:</strong> Quartets 2A and 2B are internally asymmetric, but their asymmetries mutually compensate each other at the Octet level.</li>
+                            </ul>
+
+                            <h4>2. GROUP-THEORETICAL CLOSURE (ORBITS)</h4>
+                            <p>All 24 possible codogram representations of the code are partitioned into 6 disjoint orbits of 4 elements each. Every orbit is closed under the transformation group {`{E, R, R1, R2}`} (the Klein four-group). This proves that the discovered symmetries are invariant properties of the code's architecture, not artifacts of a specific representation.</p>
+                            
+                            <h3>FINAL CONCLUSION:</h3>
+                            <p>The genetic code is not a random set of rules but a unified, dual-state information system. Its fractal, topological, and numerical properties are deeply interconnected and are revealed through the application of self-referential keys, strongly pointing to a mathematically deliberate design.</p>
+                        </div>
+                        <div className="modal-footer">
+                           <button onClick={onClose} className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Close</button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const SubRowItem = ({ codon, aminoAcid, style, isSelected, onCodonSelect, calculationMode, visualizationMode, subModeSettings }) => {
+            const sideChainMass = useMemo(() => {
+                let mass = getSideChainMass(aminoAcid); 
+
+                if (calculationMode === 'activated') {
+                    if (aminoAcid === 'STOP') mass = ACTIVATION_KEYS.STOP.sideChainMass;
+                    else if (codon === 'AUG') mass += ACTIVATION_KEYS.START.sideChainMass;
+                } else if (calculationMode === 'biochemical') {
+                    if (aminoAcid === 'STOP') mass = 0;
+                }
+                return mass;
+            }, [codon, aminoAcid, calculationMode]);
+            
+            let itemStyle = { backgroundColor: style.bg, color: style.text };
+            if (visualizationMode === 'quartet_balance' && subModeSettings.showThirdPosColors) {
+                const thirdPos = codon[2];
+                if (thirdPos === 'C' || thirdPos === 'A') {
+                    itemStyle = { backgroundColor: K_PAIR_COLOR.bg, color: K_PAIR_COLOR.text };
+                } else {
+                    itemStyle = { backgroundColor: M_PAIR_COLOR.bg, color: M_PAIR_COLOR.text };
+                }
+            }
+            
+            const className = `sub-row-item ${isSelected ? 'selected-for-summing' : ''}`;
+        
+            return (
+                <div className={className} style={itemStyle} onClick={() => onCodonSelect(codon)}>
+                    <div className="sub-row-codon-part">{formatNucleotideDisplay(codon[0])}{formatNucleotideDisplay(codon[1])}{formatNucleotideDisplay(codon[2])}</div>
+                    <div className="sub-row-info-part">
+                        <span className="aa-name">{aminoAcid}</span>
+                        <span className="mass-value">{sideChainMass}</span>
+                    </div>
+                </div>
+            );
+        };
+
+        const MatrixCell = ({ firstInternal, secondInternal, thirdPosOrder, selectedCodons, onCodonSelect, calculationMode, visualizationMode, subModeSettings }) => {
+            const pair = firstInternal + secondInternal;
+            let cellStyle;
+
+            if (visualizationMode === 'quartet_balance' && subModeSettings.showQuartetBackgrounds) {
+                let quartetColor;
+                if (QUARTET_1A.has(pair)) quartetColor = QUARTET_COLORS.Q1A;
+                else if (QUARTET_1B.has(pair)) quartetColor = QUARTET_COLORS.Q1B;
+                else if (QUARTET_2A.has(pair)) quartetColor = QUARTET_COLORS.Q2A;
+                else if (QUARTET_2B.has(pair)) quartetColor = QUARTET_COLORS.Q2B;
+                else quartetColor = 'white';
+                cellStyle = { bg: quartetColor, text: tinycolor(quartetColor).isDark() ? 'white' : 'black' };
+            } else { // Default to Rumer Octets
+                const isOctetI = STANDARD_OCTET_I_XY_PAIRS_INTERNAL.has(pair);
+                cellStyle = isOctetI ? RUMER_OCTET_COLORS.octetI : RUMER_OCTET_COLORS.octetII;
+            }
+
+            return (
+                <td className="matrix-big-cell border border-gray-400" style={{ width: '8.5rem', height: '8.5rem', backgroundColor: cellStyle.bg }}>
+                    <div className="sub-row-grid">
+                        {thirdPosOrder.map(thirdInternal => {
+                            const codon = `${firstInternal}${secondInternal}${thirdInternal}`;
+                            const aminoAcid = geneticCodeTable[codon] || '?';
+                            return (
+                                <SubRowItem 
+                                    key={thirdInternal} 
+                                    codon={codon} 
+                                    aminoAcid={aminoAcid} 
+                                    style={cellStyle}
+                                    isSelected={selectedCodons.has(codon)}
+                                    onCodonSelect={onCodonSelect}
+                                    calculationMode={calculationMode}
+                                    visualizationMode={visualizationMode}
+                                    subModeSettings={subModeSettings}
+                                />
+                            );
+                        })}
+                    </div>
+                </td>
+            );
+        };
+
+        const MatrixTable = ({ axisOrder, thirdPosOrder, selectedCodons, onCodonSelect, calculationMode, visualizationMode, subModeSettings }) => {
+            const headerSize = '3rem'; const cellSize = '8.5rem';
+            return (
+                <div className="matrix-table-wrapper">
+                    <div className="inline-block border-2 border-gray-600">
+                        <table className="border-collapse">
+                            <thead>
+                                <tr>
+                                    <th className="border border-gray-400 matrix-header-cell" style={{ width: headerSize, height: headerSize }}></th>
+                                    {axisOrder.map(nuc => <th key={nuc} className="border border-gray-400 matrix-header-cell font-mono text-2xl" style={{ width: cellSize }}>{formatNucleotideDisplay(nuc)}</th>)}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {axisOrder.map(firstInternal => (
+                                    <tr key={firstInternal}>
+                                        <th className="border border-gray-400 matrix-header-cell font-mono text-2xl" style={{ height: cellSize }}>{formatNucleotideDisplay(firstInternal)}</th>
+                                        {axisOrder.map(secondInternal => (
+                                            <MatrixCell
+                                                key={secondInternal}
+                                                firstInternal={firstInternal}
+                                                secondInternal={secondInternal}
+                                                thirdPosOrder={thirdPosOrder}
+                                                selectedCodons={selectedCodons}
+                                                onCodonSelect={onCodonSelect}
+                                                calculationMode={calculationMode}
+                                                visualizationMode={visualizationMode}
+                                                subModeSettings={subModeSettings}
+                                            />
+                                        ))}
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            );
+        };
+
+        const OrbitSelector = ({ orbitsData, currentOrder, onOrderSelect }) => {
+            return (
+                <div className="control-panel-section">
+                    <h3>Matrix Axes Order</h3>
+                    {orbitsData.map((orbit, index) => (
+                        <div key={index} className="mb-2 p-1.5 border border-gray-300 rounded-md bg-gray-50">
+                            <div className="text-xs text-center text-gray-600 mb-1 font-mono">Orbit {index + 1}</div>
+                            <div className="grid grid-cols-2 gap-1">
+                                {Object.entries(orbit.orders).map(([transformKey, orderStr]) => (
+                                    <div
+                                        key={transformKey}
+                                        className={`order-part p-1 text-center font-mono text-xs rounded ${currentOrder === orderStr ? 'active' : ''}`}
+                                        onClick={() => onOrderSelect(orderStr.split(''))}
+                                    >
+                                        {`${transformKey}: ${formatOrderForDisplay(orderStr.split(''))}`}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            );
+        };
+
+        const DemonstrationPanel = ({ onSelectSet }) => {
+            const groupedDemoSets = Object.entries(DEMO_SET_LABELS).reduce((acc, [key, {label, group}]) => {
+                if (!acc[group]) acc[group] = [];
+                acc[group].push({key, label});
+                return acc;
+             }, {});
+
+            const renderSetButton = (key, label) => (
+                <button
+                    key={key}
+                    className={`demo-set-btn ${['1', '6', '7'].includes(key) ? 'col-span-2' : ''}`}
+                    title={label}
+                    onClick={() => onSelectSet(DEMO_SETS[key]())}
+                >
+                    Set {key}
+                </button>
+            );
+
+            return (
+                <div className="control-panel-section">
+                    <h3>Demonstration Sets</h3>
+                    <div className='mt-2'>
+                        {Object.entries(groupedDemoSets).map(([groupName, sets]) => (
+                            <Fragment key={groupName}>
+                                <h4 className='text-xs font-semibold text-gray-500 mt-2 mb-1'>{groupName}</h4>
+                                <div className='grid grid-cols-2 gap-1'>
+                                    {sets.map(({key, label}) => renderSetButton(key, label))}
+                                </div>
+                            </Fragment>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+        
+        const Calculator = ({ selectedCodons, onResetSelection, calculationMode }) => {
+            const sums = useMemo(() => {
+                let sideChainMass = 0; let protons = 0; let neutrons = 0; let fullMass = 0;
+                
+                const stopCodons = new Set(['UAA', 'UAG', 'UGA']);
+                
+                selectedCodons.forEach(codon => {
+                    const aa = geneticCodeTable[codon];
+                    if (!aa) return;
+
+                    if (stopCodons.has(codon)) {
+                        if (calculationMode === 'activated') {
+                            sideChainMass += ACTIVATION_KEYS.STOP.sideChainMass;
+                            protons += ACTIVATION_KEYS.STOP.protons;
+                            neutrons += ACTIVATION_KEYS.STOP.neutrons;
+                            fullMass += ACTIVATION_KEYS.STOP.protons + ACTIVATION_KEYS.STOP.neutrons + AMINO_ACID_BACKBONE_MASS;
+                        } else if (calculationMode === 'biochemical') {
+                            sideChainMass += 0;
+                            protons += 0;
+                            neutrons += 0;
+                            fullMass += AMINO_ACID_BACKBONE_MASS;
+                        }
+                    } else { 
+                        let currentSideChainMass = getSideChainMass(aa);
+                        protons += aminoAcidNucleonCounts[aa] ? aminoAcidNucleonCounts[aa].p : 0;
+                        neutrons += aminoAcidNucleonCounts[aa] ? aminoAcidNucleonCounts[aa].n : 0;
+                        
+                        if (codon === 'AUG' && calculationMode === 'activated') {
+                           currentSideChainMass += ACTIVATION_KEYS.START.sideChainMass;
+                        }
+                        
+                        sideChainMass += currentSideChainMass;
+                        fullMass += aminoAcidAtomicWeights[aa] || 0;
+                    }
+                });
+
+                return { fullMass, sideChainMass, protons, neutrons };
+            }, [selectedCodons, calculationMode]);
+
+            if (selectedCodons.size === 0) {
+                return null;
+            }
+            
+            const QuickAnalysis = ({ value }) => {
+                if (value !== 0 && value % 37 === 0) {
+                    return (
+                        <span className="text-xs font-mono bg-green-100 text-green-700 px-2 py-0.5 rounded-full ml-2">
+                           / 37 = {value / 37}
+                        </span>
+                    );
+                }
+                return null;
+            };
+
+            const fullMassLabel = 'Sum of Full AA Masses';
+
+            return (
+                <div className="mt-4 p-3 border-t-2 border-gray-300 w-full max-w-lg mx-auto">
+                    <div className="flex justify-between items-center mb-2">
+                         <h3 className="text-base font-semibold">Calculation for {selectedCodons.size} Codon(s)</h3>
+                         <button onClick={onResetSelection} className="px-3 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600">Reset</button>
+                    </div>
+                    <div className="grid grid-cols-1 gap-y-2 text-sm font-mono p-2 bg-gray-50 rounded">
+                        <div className="flex justify-between items-center"><span>{fullMassLabel}:</span> <div><strong>{sums.fullMass}</strong><QuickAnalysis value={sums.fullMass} /></div></div>
+                        <div className="flex justify-between items-center"><span>Sum of Side-Chain Masses:</span> <div><strong>{sums.sideChainMass}</strong><QuickAnalysis value={sums.sideChainMass} /></div></div>
+                        <div className="flex justify-between items-center"><span>Sum of Protons:</span> <div><strong>{sums.protons}</strong><QuickAnalysis value={sums.protons} /></div></div>
+                        <div className="flex justify-between items-center"><span>Sum of Neutrons:</span> <div><strong>{sums.neutrons}</strong><QuickAnalysis value={sums.neutrons} /></div></div>
+                    </div>
+                </div>
+            );
+        };
+        
+        const QuartetBalanceControls = ({ settings, onToggle }) => {
+            return (
+                <div className="flex gap-2">
+                    <button className={`mode-btn ${settings.showQuartetBackgrounds ? 'active' : ''}`} onClick={() => onToggle('backgrounds')}>
+                        Quartet BG
+                    </button>
+                    <button className={`mode-btn ${settings.showThirdPosColors ? 'active' : ''}`} onClick={() => onToggle('thirdPos')}>
+                        3rd Pos. Colors
+                    </button>
+                </div>
+            );
+        };
+
+        const GeneticCodeMatrixApp = () => {
+            const [axisOrder, setAxisOrder] = useState(['U', 'C', 'A', 'G']);
+            const orbitsData = useMemo(() => generateRumerOrbitsData(), []);
+            const [selectedCodons, setSelectedCodons] = useState(new Set());
+            const [calculationMode, setCalculationMode] = useState('biochemical'); // 'biochemical', 'activated'
+            const [visualizationMode, setVisualizationMode] = useState('rumer_octets');
+            const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
+            const [quartetBalanceSettings, setQuartetBalanceSettings] = useState({
+                showQuartetBackgrounds: true,
+                showThirdPosColors: true
+            });
+
+            const handleCodonSelect = (codon) => {
+                setSelectedCodons(prev => {
+                    const newSet = new Set(prev);
+                    if (newSet.has(codon)) newSet.delete(codon); else newSet.add(codon);
+                    return newSet;
+                });
+            };
+            const handleResetSelection = () => setSelectedCodons(new Set());
+            const handleDemoSetSelect = (codonSet) => setSelectedCodons(codonSet);
+            const handleQuartetBalanceToggle = (type) => {
+                setQuartetBalanceSettings(prev => {
+                    if (type === 'backgrounds') return { ...prev, showQuartetBackgrounds: !prev.showQuartetBackgrounds };
+                    if (type === 'thirdPos') return { ...prev, showThirdPosColors: !prev.showThirdPosColors };
+                    return prev;
+                });
+            };
+
+            return (
+                <div className="flex flex-row h-full">
+                    <div className="control-panel">
+                        <div className="control-panel-section">
+                            <button onClick={() => setIsInfoModalOpen(true)} className="mode-btn mb-4">
+                                Information
+                            </button>
+                        </div>
+                        <OrbitSelector orbitsData={orbitsData} currentOrder={axisOrder.join('')} onOrderSelect={setAxisOrder} />
+                        <div className="control-panel-section">
+                             <h3 className="mb-2">Visualization Mode</h3>
+                             <div className="flex flex-col gap-2">
+                                <button className={`mode-btn ${visualizationMode === 'rumer_octets' ? 'active' : ''}`} onClick={() => setVisualizationMode('rumer_octets')}>Rumer Octets</button>
+                                <button className={`mode-btn ${visualizationMode === 'quartet_balance' ? 'active' : ''}`} onClick={() => setVisualizationMode('quartet_balance')}>Quartet Balance</button>
+                             </div>
+                             {visualizationMode === 'quartet_balance' && (
+                                <div className="mt-2">
+                                    <QuartetBalanceControls settings={quartetBalanceSettings} onToggle={handleQuartetBalanceToggle} />
+                                </div>
+                             )}
+                        </div>
+                    </div>
+                    <div className="flex-1 p-4 flex flex-col items-center overflow-auto relative">
+                        <MatrixTable 
+                            axisOrder={axisOrder} 
+                            thirdPosOrder={axisOrder}
+                            selectedCodons={selectedCodons}
+                            onCodonSelect={handleCodonSelect}
+                            calculationMode={calculationMode}
+                            visualizationMode={visualizationMode}
+                            subModeSettings={quartetBalanceSettings}
+                        />
+
+                         <Calculator 
+                            selectedCodons={selectedCodons} 
+                            onResetSelection={handleResetSelection} 
+                            calculationMode={calculationMode}
+                         />
+                    </div>
+                    <div className="matrix-instance-properties-panel">
+                         <DemonstrationPanel onSelectSet={handleDemoSetSelect} />
+                         <div className="control-panel-section">
+                            <h3 className="mb-2">Key Sets</h3>
+                             <div className="flex flex-col gap-2">
+                                <button className={`mode-btn ${calculationMode === 'biochemical' ? 'active' : ''}`} onClick={() => setCalculationMode('biochemical')}>Key Set 1</button>
+                                <button className={`mode-btn ${calculationMode === 'activated' ? 'active' : ''}`} onClick={() => setCalculationMode('activated')}>Key Set 2</button>
+                             </div>
+                             <div className="text-xs text-gray-500 mt-2 font-mono break-words">
+                                {calculationMode === 'biochemical' && '(STOP M_side=0; P=0; N=0)'}
+                                {calculationMode === 'activated' && '(STOP M_side=222, P=116, N=106; START M_side+=74)'}
+                             </div>
+                         </div>
+                    </div>
+                    <InfoModal isOpen={isInfoModalOpen} onClose={() => setIsInfoModalOpen(false)} />
+                </div>
+            );
+        };
+
+        // --- 3. RENDER THE APP ---
+        ReactDOM.render(<GeneticCodeMatrixApp />, document.getElementById('root'));
+
+    </script>
+</body>
+</html>
